@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const User = require('../db/models/User');
-const Follow = require('../db/models/Follow');
+// const Follow = require('../db/models/Follow');
 const Show = require('../db/models/Show');
 require('dotenv').config({ path: './FIND.env' });
 const { auth } = require('express-oauth2-jwt-bearer');

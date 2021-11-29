@@ -1,10 +1,11 @@
 const router = require('express').Router();
 const User = require('../db/models/User');
-const Follow = require('../db/models/Follow');
+// const Follow = require('../db/models/Follow');
 const UserShow = require('../db/models/UserShow');
 const Show = require('../db/models/Show');
 require('dotenv').config({ path: './FIND.env' });
 const { auth } = require('express-oauth2-jwt-bearer');
+Sequelize = require('sequelize');
 
 // Authorization middleware. When used, the Access Token must
 // exist and be verified against the Auth0 JSON Web Key Set.
@@ -31,6 +32,41 @@ const findUserFromToken = async (token) => {
   });
   return users;
 };
+
+router.get('/all', checkJwt, async (req, res, next) => {
+  try {
+    console.log('i got back here');
+    const decoded = jwtDecode(req.headers.authorization);
+    let user = await findUserFromToken(decoded);
+    if (user) {
+      const otherUsers = await User.findAll({
+        where: {
+          id: {
+            [Sequelize.Op.ne]: user.id,
+          },
+        },
+      });
+      console.log('other on back end', otherUsers);
+      res.send(otherUsers);
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/otherUser/:userId', checkJwt, async (req, res, next) => {
+  try {
+    console.log('i got inside the other user');
+    const otherUser = await User.findByPk(req.params.userId);
+    if (otherUser) {
+      res.send(otherUser);
+    } else {
+      console.log(`Could not find a user with id ${req.params.userId}`);
+    }
+  } catch (err) {
+    next(err);
+  }
+});
 
 router.get('/login', checkJwt, async (req, res, next) => {
   try {
@@ -62,20 +98,80 @@ router.get('/login', checkJwt, async (req, res, next) => {
   }
 });
 
-router.get('/shows', checkJwt, async (req, res, next) => {
+router.get('/shows/:uid', checkJwt, async (req, res, next) => {
   try {
+    let userShows;
+    if (req.params.uid === 'undefined') {
+      const decoded = jwtDecode(req.headers.authorization);
+      const user = await findUserFromToken(decoded);
+      if (user) {
+        console.log('1');
+        userShows = await UserShow.findAll({
+          where: {
+            userId: user.id,
+          },
+          include: {
+            model: Show,
+          },
+        });
+      } else {
+        console.log('2');
+        userShows = '-1';
+      }
+    } else {
+      console.log('3');
+      userShows = await UserShow.findAll({
+        where: {
+          userId: req.params.uid,
+        },
+        include: {
+          model: Show,
+        },
+      });
+    }
+    res.send(userShows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/recs', checkJwt, async (req, res, next) => {
+  try {
+    console.log('i got to recs on back end');
     const decoded = jwtDecode(req.headers.authorization);
     const user = await findUserFromToken(decoded);
-    console.log('I GOT HERE');
-    const userShows = await UserShow.findAll({
-      where: {
-        userId: user.id,
-      },
-      include: {
-        model: Show,
-      },
-    });
-    res.send(userShows);
+    if (user) {
+      console.log(Object.keys(user.__proto__));
+      if (user) {
+        const following = await user.getFollowed();
+        console.log('following', following);
+
+        // THIS ONE
+        let followedRecs = [];
+        for (let i = 0; i < following.length; i++) {
+          const followedId = following[i].id;
+          const recs = await UserShow.findAll({
+            where: {
+              userId: followedId,
+            },
+            include: [
+              {
+                model: Show,
+              },
+              {
+                model: User,
+                where: {
+                  id: followedId,
+                },
+              },
+            ],
+          });
+          followedRecs = [...followedRecs, ...recs];
+        }
+        console.log('followed rec user in back end', followedRecs.user);
+        res.send(followedRecs);
+      }
+    }
   } catch (err) {
     next(err);
   }
@@ -85,19 +181,12 @@ router.get('/following', checkJwt, async (req, res, next) => {
   try {
     const decoded = jwtDecode(req.headers.authorization);
     const user = await findUserFromToken(decoded);
-    const following = await Follow.findAll({
-      where: {
-        follower: user.id,
-      },
-      // include: [
-      //   {
-      //     model: User,
-      //     as: 'Following',
-      //   },
-      // ],
-    });
-    console.log('following in back end', following);
-    res.send(following);
+    if (user) {
+      const followed = await user.getFollowed();
+
+      console.log('following in back end', followed);
+      res.send(followed);
+    }
   } catch (err) {
     next(err);
   }
@@ -179,29 +268,32 @@ router.put('/follow', checkJwt, async (req, res, next) => {
   try {
     const decoded = jwtDecode(req.headers.authorization);
     const user = await findUserFromToken(decoded);
-    const followedId = req.body;
-    const followed = await user.addFollowing(followedId);
-    console.log('followed', followed);
-    res.send(followed);
+    if (user) {
+      const followedId = req.body.uid;
+      console.log('body', req.body);
+      console.log('magic', Object.keys(user.__proto__));
+      await user.addFollowed(followedId);
+      const followed = await User.findByPk(followedId);
+      res.send(followed);
+    }
   } catch (err) {
     next(err);
   }
 });
 
-router.delete('/unfollow', checkJwt, async (req, res, next) => {
+router.put('/unfollow', checkJwt, async (req, res, next) => {
   try {
     const decoded = jwtDecode(req.headers.authorization);
     const user = await findUserFromToken(decoded);
-    const unfollowedId = req.body;
-    const unfollowed = await Follow.findOne({
-      where: {
-        followed: unfollowedId,
-        follower: user.id,
-      },
-    });
+    const unfollowedId = req.body.uid;
+    const unfollowed = await user.removeFollowed(unfollowedId);
+
     console.log('unfollowed', unfollowed);
-    await unfollowed.destroy();
-    res.send(unfollowed);
+    if (unfollowed === 1) {
+      res.send({ id: unfollowedId });
+    } else {
+      console.error('Error. Could not unfollow that user');
+    }
   } catch (err) {
     next(err);
   }
