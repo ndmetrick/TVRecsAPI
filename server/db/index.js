@@ -4,6 +4,7 @@ const User = require('./models/User');
 // const Follow = require('./models/Follow');
 const Show = require('./models/Show');
 const UserShow = require('./models/UserShow');
+const Tag = require('./models/Tag');
 
 User.belongsToMany(User, {
   through: 'Follow',
@@ -16,25 +17,6 @@ User.belongsToMany(User, {
   foreignKey: 'follower',
 });
 
-// User.hasMany(Follow, {
-//   as: 'FollowerLinks',
-//   foreignKey: 'followerId',
-// });
-// User.hasMany(Follow, {
-//   as: 'FollowedLinks',
-//   foreignKey: 'followedId',
-// });
-
-// Follow.belongsTo(User, {
-//   as: 'Followed,',
-//   foreignKey: 'followedId',
-// });
-
-// Follow.belongsTo(User, {
-//   as: 'Followers,',
-//   foreignKey: 'followerId',
-// });
-
 User.belongsToMany(Show, { through: UserShow });
 Show.belongsToMany(User, { through: UserShow });
 
@@ -44,12 +26,18 @@ UserShow.belongsTo(User);
 Show.hasMany(UserShow);
 UserShow.belongsTo(Show);
 
+UserShow.belongsToMany(Tag, { through: 'UserShowTags' });
+Tag.belongsToMany(UserShow, { through: 'UserShowTags' });
+
+User.belongsToMany(Tag, { through: 'ProfileTags' });
+Tag.belongsToMany(User, { through: 'ProfileTags' });
+
 module.exports = {
   db,
   models: {
     User,
-    // Follow,
     Show,
     UserShow,
+    Tag,
   },
 };
