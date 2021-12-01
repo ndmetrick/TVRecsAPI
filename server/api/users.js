@@ -105,24 +105,23 @@ router.get('/shows/:uid', checkJwt, async (req, res, next) => {
       const decoded = jwtDecode(req.headers.authorization);
       const user = await findUserFromToken(decoded);
       if (user) {
-        console.log('1');
         userShows = await UserShow.findAll({
           where: {
             userId: user.id,
+            toWatch: false,
           },
           include: {
             model: Show,
           },
         });
       } else {
-        console.log('2');
         userShows = '-1';
       }
     } else {
-      console.log('3');
       userShows = await UserShow.findAll({
         where: {
           userId: req.params.uid,
+          toWatch: false,
         },
         include: {
           model: Show,
@@ -130,6 +129,30 @@ router.get('/shows/:uid', checkJwt, async (req, res, next) => {
       });
     }
     res.send(userShows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/showsToWatch', checkJwt, async (req, res, next) => {
+  try {
+    const decoded = jwtDecode(req.headers.authorization);
+    const user = await findUserFromToken(decoded);
+    if (user) {
+      const toWatch = await UserShow.findAll({
+        where: {
+          userId: user.id,
+          toWatch: true,
+        },
+        include: {
+          model: Show,
+        },
+      });
+      res.send(toWatch);
+    } else {
+      res.sendStatus(404);
+      // add message
+    }
   } catch (err) {
     next(err);
   }
@@ -146,13 +169,13 @@ router.get('/recs', checkJwt, async (req, res, next) => {
         const following = await user.getFollowed();
         console.log('following', following);
 
-        // THIS ONE
         let followedRecs = [];
         for (let i = 0; i < following.length; i++) {
           const followedId = following[i].id;
           const recs = await UserShow.findAll({
             where: {
               userId: followedId,
+              toWatch: false,
             },
             include: [
               {
@@ -192,7 +215,7 @@ router.get('/following', checkJwt, async (req, res, next) => {
   }
 });
 
-router.put('/addShow', checkJwt, async (req, res, next) => {
+router.put('/addShow/:toWatch', checkJwt, async (req, res, next) => {
   try {
     const show = req.body;
     // get the id of the show from the database
@@ -223,6 +246,8 @@ router.put('/addShow', checkJwt, async (req, res, next) => {
       res.sendStatus(404);
       return;
     }
+    const toWatch = req.params.toWatch;
+    console.log('to watch is', toWatch);
     await user.addShow(showId);
     const userShow = await UserShow.findOne({
       where: {
@@ -234,8 +259,37 @@ router.put('/addShow', checkJwt, async (req, res, next) => {
       },
     });
     userShow.description = show.description;
+    userShow.toWatch = toWatch;
     userShow.save();
+    console.log('userShow', userShow);
 
+    res.send(userShow);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/switchShow', checkJwt, async (req, res, next) => {
+  try {
+    const decoded = jwtDecode(req.headers.authorization);
+    const user = await findUserFromToken(decoded);
+    if (!user) {
+      res.sendStatus(404);
+      return;
+    }
+    const userShow = await UserShow.findOne({
+      where: {
+        id: req.body.userShowId,
+        userId: user.id,
+      },
+    });
+    if (!userShow) {
+      res.sendStatus(404);
+      return;
+    }
+    userShow.toWatch = false;
+    userShow.description = req.body.description;
+    userShow.save();
     res.send(userShow);
   } catch (err) {
     next(err);
