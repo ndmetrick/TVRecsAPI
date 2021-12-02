@@ -218,6 +218,7 @@ router.get('/following', checkJwt, async (req, res, next) => {
 router.put('/addShow/:toWatch', checkJwt, async (req, res, next) => {
   try {
     const show = req.body;
+    console.log('i got here in the back about imdb problem', show);
     // get the id of the show from the database
     let foundShowInDatabase = await Show.findOne({
       where: {
@@ -277,10 +278,14 @@ router.put('/switchShow', checkJwt, async (req, res, next) => {
       res.sendStatus(404);
       return;
     }
+    console.log('this is usershowid', req.body.userShowId);
     const userShow = await UserShow.findOne({
       where: {
         id: req.body.userShowId,
         userId: user.id,
+      },
+      include: {
+        model: Show,
       },
     });
     if (!userShow) {
