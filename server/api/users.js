@@ -329,8 +329,7 @@ router.put('/changeUserTags', checkJwt, async (req, res, next) => {
       return;
     }
     const { tags } = req.body;
-    const updatedUser = user.setTags(tag);
-    console.log('this is the updated user in change user tags', updatedUser);
+    user.setTags(tags);
     res.send(tags);
   } catch (err) {
     next(err);
@@ -346,6 +345,7 @@ router.put('/changeShowTags', checkJwt, async (req, res, next) => {
       return;
     }
     const { tagIds } = req.body;
+    console.log('i got this far', tagIds);
     const userShow = await UserShow.findOne({
       where: {
         id: req.body.userShowId,
@@ -360,15 +360,26 @@ router.put('/changeShowTags', checkJwt, async (req, res, next) => {
         },
       ],
     });
+    console.log('this is the userShow in changeShowtags', userShow);
     if (!userShow) {
       res.sendStatus(404);
       return;
     }
-    console.log('tagids', tagIds);
     await userShow.setTags(tagIds);
+    const updatedUserShow = await UserShow.findByPk(userShow.id, {
+      include: [
+        {
+          model: Show,
+        },
+        {
+          model: Tag,
+        },
+      ],
+    });
 
-    console.log('this is usershow in changing tags', userShow);
-    res.send(userShow);
+    console.log('updatedUserShow', updatedUserShow);
+
+    res.send(updatedUserShow);
   } catch (err) {
     next(err);
   }
@@ -401,13 +412,25 @@ router.put('/switchShow', checkJwt, async (req, res, next) => {
       res.sendStatus(404);
       return;
     }
+
     if (req.body.tagIds) {
       await userShow.setTags(req.body.tagIds);
     }
-    userShow.toWatch = false;
-    userShow.description = req.body.description;
-    userShow.save();
-    res.send(userShow);
+
+    const updatedUserShow = await UserShow.findByPk(userShow.id, {
+      include: [
+        {
+          model: Show,
+        },
+        {
+          model: Tag,
+        },
+      ],
+    });
+    updatedUserShow.toWatch = false;
+    updatedUserShow.description = req.body.description;
+    updatedUserShow.save();
+    res.send(updatedUserShow);
   } catch (err) {
     next(err);
   }
