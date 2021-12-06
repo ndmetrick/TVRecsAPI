@@ -3,6 +3,7 @@ const User = require('../db/models/User');
 // const Follow = require('../db/models/Follow');
 const UserShow = require('../db/models/UserShow');
 const Show = require('../db/models/Show');
+const Tag = require('../db/models/Tag');
 require('dotenv').config({ path: './FIND.env' });
 const { auth } = require('express-oauth2-jwt-bearer');
 Sequelize = require('sequelize');
@@ -35,7 +36,6 @@ const findUserFromToken = async (token) => {
 
 router.get('/all', checkJwt, async (req, res, next) => {
   try {
-    console.log('i got back here');
     const decoded = jwtDecode(req.headers.authorization);
     let user = await findUserFromToken(decoded);
     if (user) {
@@ -46,7 +46,6 @@ router.get('/all', checkJwt, async (req, res, next) => {
           },
         },
       });
-      console.log('other on back end', otherUsers);
       res.send(otherUsers);
     }
   } catch (err) {
@@ -56,7 +55,6 @@ router.get('/all', checkJwt, async (req, res, next) => {
 
 router.get('/otherUser/:userId', checkJwt, async (req, res, next) => {
   try {
-    console.log('i got inside the other user');
     const otherUser = await User.findByPk(req.params.userId);
     if (otherUser) {
       res.send(otherUser);
@@ -70,8 +68,6 @@ router.get('/otherUser/:userId', checkJwt, async (req, res, next) => {
 
 router.get('/login', checkJwt, async (req, res, next) => {
   try {
-    console.log('i got here to login');
-
     // const { data } = await auth0.getUsers({ id: token.sub });
 
     // HOW TO GET DATA
@@ -110,9 +106,14 @@ router.get('/shows/:uid', checkJwt, async (req, res, next) => {
             userId: user.id,
             toWatch: false,
           },
-          include: {
-            model: Show,
-          },
+          include: [
+            {
+              model: Show,
+            },
+            {
+              model: Tag,
+            },
+          ],
         });
       } else {
         userShows = '-1';
@@ -123,9 +124,14 @@ router.get('/shows/:uid', checkJwt, async (req, res, next) => {
           userId: req.params.uid,
           toWatch: false,
         },
-        include: {
-          model: Show,
-        },
+        include: [
+          {
+            model: Show,
+          },
+          {
+            model: Tag,
+          },
+        ],
       });
     }
     res.send(userShows);
@@ -144,9 +150,14 @@ router.get('/showsToWatch', checkJwt, async (req, res, next) => {
           userId: user.id,
           toWatch: true,
         },
-        include: {
-          model: Show,
-        },
+        include: [
+          {
+            model: Show,
+          },
+          {
+            model: Tag,
+          },
+        ],
       });
       res.send(toWatch);
     } else {
@@ -160,15 +171,11 @@ router.get('/showsToWatch', checkJwt, async (req, res, next) => {
 
 router.get('/recs', checkJwt, async (req, res, next) => {
   try {
-    console.log('i got to recs on back end');
     const decoded = jwtDecode(req.headers.authorization);
     const user = await findUserFromToken(decoded);
     if (user) {
-      console.log(Object.keys(user.__proto__));
       if (user) {
         const following = await user.getFollowed();
-        console.log('following', following);
-
         let followedRecs = [];
         for (let i = 0; i < following.length; i++) {
           const followedId = following[i].id;
@@ -182,6 +189,9 @@ router.get('/recs', checkJwt, async (req, res, next) => {
                 model: Show,
               },
               {
+                model: Tag,
+              },
+              {
                 model: User,
                 where: {
                   id: followedId,
@@ -191,7 +201,6 @@ router.get('/recs', checkJwt, async (req, res, next) => {
           });
           followedRecs = [...followedRecs, ...recs];
         }
-        console.log('followed rec user in back end', followedRecs.user);
         res.send(followedRecs);
       }
     }
@@ -200,14 +209,17 @@ router.get('/recs', checkJwt, async (req, res, next) => {
   }
 });
 
-router.get('/following', checkJwt, async (req, res, next) => {
+router.get('/following/:uid', checkJwt, async (req, res, next) => {
   try {
     const decoded = jwtDecode(req.headers.authorization);
-    const user = await findUserFromToken(decoded);
+    let user;
+    if (typeof req.params.uid === 'number') {
+      user = await User.findByPk(req.params.uid);
+    } else {
+      user = await findUserFromToken(decoded);
+    }
     if (user) {
       const followed = await user.getFollowed();
-
-      console.log('following in back end', followed);
       res.send(followed);
     }
   } catch (err) {
@@ -218,7 +230,6 @@ router.get('/following', checkJwt, async (req, res, next) => {
 router.put('/addShow/:toWatch', checkJwt, async (req, res, next) => {
   try {
     const show = req.body;
-    console.log('i got here in the back about imdb problem', show);
     // get the id of the show from the database
     let foundShowInDatabase = await Show.findOne({
       where: {
@@ -248,22 +259,115 @@ router.put('/addShow/:toWatch', checkJwt, async (req, res, next) => {
       return;
     }
     const toWatch = req.params.toWatch;
-    console.log('to watch is', toWatch);
     await user.addShow(showId);
     const userShow = await UserShow.findOne({
       where: {
         showId,
         userId: user.id,
       },
-      include: {
-        model: Show,
-      },
+      include: [
+        {
+          model: Show,
+        },
+        {
+          model: Tag,
+        },
+      ],
     });
     userShow.description = show.description;
     userShow.toWatch = toWatch;
     userShow.save();
     console.log('userShow', userShow);
 
+    res.send(userShow);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/getUserTags/:uid', checkJwt, async (req, res, next) => {
+  try {
+    const decoded = jwtDecode(req.headers.authorization);
+    let user = null;
+    console.log('reqparams', req.params.uid);
+    if (typeof req.params.uid === 'number') {
+      console.log('uid here', req.params.uid);
+      user = await User.findByPk(req.params.uid);
+    } else {
+      user = await findUserFromToken(decoded);
+    }
+    // if (!user) {
+    //   res.sendStatus(404);
+    //   return;
+    // }
+    if (user) {
+      const tags = await user.getTags();
+      console.log('these are the user tags', tags);
+      res.send(tags);
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/getAllTags', checkJwt, async (req, res, next) => {
+  try {
+    const tags = await Tag.findAll();
+    console.log('these are all the tags', tags);
+    res.send(tags);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/changeUserTags', checkJwt, async (req, res, next) => {
+  try {
+    const decoded = jwtDecode(req.headers.authorization);
+    const user = await findUserFromToken(decoded);
+    if (!user) {
+      res.sendStatus(404);
+      return;
+    }
+    const { tags } = req.body;
+    const updatedUser = user.setTags(tag);
+    console.log('this is the updated user in change user tags', updatedUser);
+    res.send(tags);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/changeShowTags', checkJwt, async (req, res, next) => {
+  try {
+    const decoded = jwtDecode(req.headers.authorization);
+    const user = await findUserFromToken(decoded);
+    if (!user) {
+      res.sendStatus(404);
+      return;
+    }
+    const { tagIds } = req.body;
+    const userShow = await UserShow.findOne({
+      where: {
+        id: req.body.userShowId,
+        userId: user.id,
+      },
+      include: [
+        {
+          model: Show,
+        },
+        {
+          model: Tag,
+        },
+      ],
+    });
+    if (!userShow) {
+      res.sendStatus(404);
+      return;
+    }
+    console.log('tagids', tagIds);
+    await userShow.setTags(tagIds);
+
+    console.log('this is usershow in changing tags', userShow);
     res.send(userShow);
   } catch (err) {
     next(err);
@@ -284,13 +388,21 @@ router.put('/switchShow', checkJwt, async (req, res, next) => {
         id: req.body.userShowId,
         userId: user.id,
       },
-      include: {
-        model: Show,
-      },
+      include: [
+        {
+          model: Show,
+        },
+        {
+          model: Tag,
+        },
+      ],
     });
     if (!userShow) {
       res.sendStatus(404);
       return;
+    }
+    if (req.body.tagIds) {
+      await userShow.setTags(req.body.tagIds);
     }
     userShow.toWatch = false;
     userShow.description = req.body.description;
@@ -311,11 +423,15 @@ router.put('/deleteShow', checkJwt, async (req, res, next) => {
         showId,
         userId: user.id,
       },
-      include: {
-        model: Show,
-      },
+      include: [
+        {
+          model: Show,
+        },
+        {
+          model: Tag,
+        },
+      ],
     });
-    console.log(userShow, 'userShow');
     await userShow.destroy();
     res.send(userShow);
   } catch (err) {
@@ -329,8 +445,6 @@ router.put('/follow', checkJwt, async (req, res, next) => {
     const user = await findUserFromToken(decoded);
     if (user) {
       const followedId = req.body.uid;
-      console.log('body', req.body);
-      console.log('magic', Object.keys(user.__proto__));
       await user.addFollowed(followedId);
       const followed = await User.findByPk(followedId);
       res.send(followed);
@@ -347,7 +461,6 @@ router.put('/unfollow', checkJwt, async (req, res, next) => {
     const unfollowedId = req.body.uid;
     const unfollowed = await user.removeFollowed(unfollowedId);
 
-    console.log('unfollowed', unfollowed);
     if (unfollowed === 1) {
       res.send({ id: unfollowedId });
     } else {
