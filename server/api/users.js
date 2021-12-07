@@ -34,8 +34,12 @@ const findUserFromToken = async (token) => {
   return users;
 };
 
-router.get('/all', checkJwt, async (req, res, next) => {
+router.get('/all', async (req, res, next) => {
   try {
+    if (!req.headers.authorization) {
+      const otherUsers = await User.findAll();
+      res.send(otherUsers);
+    }
     const decoded = jwtDecode(req.headers.authorization);
     let user = await findUserFromToken(decoded);
     if (user) {
@@ -53,7 +57,7 @@ router.get('/all', checkJwt, async (req, res, next) => {
   }
 });
 
-router.get('/otherUser/:userId', checkJwt, async (req, res, next) => {
+router.get('/otherUser/:userId', async (req, res, next) => {
   try {
     const otherUser = await User.findByPk(req.params.userId);
     if (otherUser) {
@@ -94,7 +98,7 @@ router.get('/login', checkJwt, async (req, res, next) => {
   }
 });
 
-router.get('/shows/:uid', checkJwt, async (req, res, next) => {
+router.get('/shows/:uid', async (req, res, next) => {
   try {
     let userShows;
     if (req.params.uid === 'undefined') {
@@ -209,13 +213,13 @@ router.get('/recs', checkJwt, async (req, res, next) => {
   }
 });
 
-router.get('/following/:uid', checkJwt, async (req, res, next) => {
+router.get('/following/:uid', async (req, res, next) => {
   try {
-    const decoded = jwtDecode(req.headers.authorization);
     let user;
     if (typeof req.params.uid === 'number') {
       user = await User.findByPk(req.params.uid);
     } else {
+      const decoded = jwtDecode(req.headers.authorization);
       user = await findUserFromToken(decoded);
     }
     if (user) {
@@ -285,15 +289,13 @@ router.put('/addShow/:toWatch', checkJwt, async (req, res, next) => {
   }
 });
 
-router.get('/getUserTags/:uid', checkJwt, async (req, res, next) => {
+router.get('/getUserTags/:uid', async (req, res, next) => {
   try {
-    const decoded = jwtDecode(req.headers.authorization);
     let user = null;
-    console.log('reqparams', req.params.uid);
     if (typeof req.params.uid === 'number') {
-      console.log('uid here', req.params.uid);
       user = await User.findByPk(req.params.uid);
     } else {
+      const decoded = jwtDecode(req.headers.authorization);
       user = await findUserFromToken(decoded);
     }
     // if (!user) {
@@ -302,7 +304,6 @@ router.get('/getUserTags/:uid', checkJwt, async (req, res, next) => {
     // }
     if (user) {
       const tags = await user.getTags();
-      console.log('these are the user tags', tags);
       res.send(tags);
     }
   } catch (err) {
@@ -310,10 +311,9 @@ router.get('/getUserTags/:uid', checkJwt, async (req, res, next) => {
   }
 });
 
-router.get('/getAllTags', checkJwt, async (req, res, next) => {
+router.get('/getAllTags', async (req, res, next) => {
   try {
     const tags = await Tag.findAll();
-    console.log('these are all the tags', tags);
     res.send(tags);
   } catch (err) {
     next(err);
