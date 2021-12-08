@@ -120,8 +120,8 @@ router.get('/login', checkJwt, async (req, res, next) => {
 
 router.get('/shows/:uid', async (req, res, next) => {
   try {
-    let userShows;
-    if (req.params.uid === 'undefined') {
+    let userShows = [];
+    if (req.params.uid === 'undefined' && req.headers.authorization) {
       const decoded = jwtDecode(req.headers.authorization);
       const user = await findUserFromToken(decoded);
       if (user) {
@@ -238,7 +238,11 @@ router.get('/following/:uid', async (req, res, next) => {
     let user;
     if (typeof req.params.uid === 'number') {
       user = await User.findByPk(req.params.uid);
-    } else {
+    } else if (req.headers.authorization) {
+      console.log(
+        'this is what authorization looks like here',
+        req.headers.authorization
+      );
       const decoded = jwtDecode(req.headers.authorization);
       user = await findUserFromToken(decoded);
     }
@@ -314,7 +318,7 @@ router.get('/getUserTags/:uid', async (req, res, next) => {
     let user = null;
     if (typeof req.params.uid === 'number') {
       user = await User.findByPk(req.params.uid);
-    } else {
+    } else if (req.headers.authorization) {
       const decoded = jwtDecode(req.headers.authorization);
       user = await findUserFromToken(decoded);
     }
