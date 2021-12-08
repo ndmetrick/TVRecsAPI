@@ -2,7 +2,8 @@
   "name": "tv-recs",
   "main": "index.js",
   "scripts": {
-    "start:dev": "nodemon ./bin/index.js"
+    "start:dev": "nodemon ./bin/index.js",
+    "start": " node ./bin/index.js"
   },
   "dependencies": {
     "auth0": "^2.37.0",
