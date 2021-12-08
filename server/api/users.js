@@ -59,18 +59,20 @@ router.get('/all', async (req, res, next) => {
     if (!req.headers.authorization) {
       const otherUsers = await User.findAll();
       res.send(otherUsers);
-    }
-    const decoded = jwtDecode(req.headers.authorization);
-    let user = await findUserFromToken(decoded);
-    if (user) {
-      const otherUsers = await User.findAll({
-        where: {
-          id: {
-            [Sequelize.Op.ne]: user.id,
+    } else {
+      console.log('in here it is', req.headers.authorization);
+      const decoded = jwtDecode(req.headers.authorization);
+      let user = await findUserFromToken(decoded);
+      if (user) {
+        const otherUsers = await User.findAll({
+          where: {
+            id: {
+              [Sequelize.Op.ne]: user.id,
+            },
           },
-        },
-      });
-      res.send(otherUsers);
+        });
+        res.send(otherUsers);
+      }
     }
   } catch (err) {
     next(err);
