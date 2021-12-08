@@ -37,11 +37,8 @@ const findUserFromToken = async (token) => {
 router.get('/keys/:api', (req, res, next) => {
   try {
     const api = req.params.api;
-    const omdbKey = process.env.OMDB;
-    const tmdbKey = process.env.TMDB;
-    console.log(omdbKey);
-    if (api === 'omdb') return omdbKey;
-    if (api === 'tmdb') return tmdbKey;
+    if (api === 'omdb') res.send(process.env.OMDB);
+    if (api === 'tmdb') res.send(process.env.TMDB);
   } catch (e) {
     console.log(e);
     next(e);
