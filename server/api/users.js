@@ -34,6 +34,15 @@ const findUserFromToken = async (token) => {
   return users;
 };
 
+router.get('/authInfo', (req, res, next) => {
+  try {
+    res.send([process.env.CLIENTID, process.env.AUTH_ENDPOINT]);
+  } catch (e) {
+    console.log(e);
+    next(e);
+  }
+});
+
 router.get('/keys/:api', (req, res, next) => {
   try {
     const api = req.params.api;
