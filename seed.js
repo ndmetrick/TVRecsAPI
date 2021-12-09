@@ -26,7 +26,6 @@ async function seed() {
       { name: 'complex', type: 'tv' },
       { name: 'comforting', type: 'unassigned' },
       { name: 'about parenthood', type: 'unassigned' },
-      { name: 'pregnancy', type: 'unassigned' },
       { name: 'alternative family', type: 'unassigned' },
       { name: 'transgender/non-binary characters', type: 'unassigned' },
       { name: 'LGBTQ main characters', type: 'unassigned' },
