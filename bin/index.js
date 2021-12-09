@@ -1,7 +1,7 @@
-const { db } = require('./db');
+const { db } = require('../server/db');
 const PORT = process.env.PORT ?? 8080;
-const app = require('./app');
-const seed = require('../script/seed');
+const app = require('../server');
+const seed = require('./seed');
 
 const init = async () => {
   try {
