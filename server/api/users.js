@@ -34,6 +34,24 @@ const findUserFromToken = async (token) => {
   return users;
 };
 
+router.post('/addTags', checkJwt, async (req, res, next) => {
+  try {
+    if (req.headers.authorization) {
+      const decoded = jwtDecode(req.headers.authorization);
+      let user = await findUserFromToken(decoded);
+      if (user) {
+        if (user.username === 'ndmetrick@gmail.com') {
+          const tag = req.body.tag;
+          await Tag.create(tag);
+          res.sendStatus(200);
+        }
+      }
+    }
+  } catch (err) {
+    console.error(err);
+  }
+});
+
 router.get('/authInfo', (req, res, next) => {
   try {
     res.send([process.env.CLIENTID, process.env.AUTH_ENDPOINT]);
