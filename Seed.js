@@ -51,19 +51,22 @@ async function seed() {
   }
 }
 
-module.exports = seed;
-// If this module is being required from another module, then we just export the
-// function, to be used as necessary. But it will run right away if the module
-// is executed directly (e.g. `node seed.js` or `npm run seed`)
-if (require.main === module) {
-  seed()
-    .then(() => {
-      console.log(green('Seeding success!'));
-      db.close();
-    })
-    .catch((err) => {
-      console.error(red('Oh noes! Something went wrong!'));
-      console.error(err);
-      db.close();
-    });
+async function runSeed() {
+  console.log('seeding...');
+  try {
+    await seed();
+  } catch (err) {
+    console.error(err);
+    process.exitCode = 1;
+  } finally {
+    console.log('closing db connection');
+    await db.close();
+    console.log('db connection closed');
+  }
 }
+
+if (module === require.main) {
+  runSeed();
+}
+
+module.exports = seed;

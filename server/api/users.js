@@ -58,7 +58,9 @@ router.get('/all', async (req, res, next) => {
   try {
     if (!req.headers.authorization) {
       const otherUsers = await User.findAll();
-      res.send(otherUsers);
+      if (otherUsers) {
+        res.send(otherUsers);
+      }
     } else {
       console.log('in here it is', req.headers.authorization);
       const decoded = jwtDecode(req.headers.authorization);
