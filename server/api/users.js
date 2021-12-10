@@ -150,7 +150,7 @@ router.get('/shows/:uid', async (req, res, next) => {
         userShows = await UserShow.findAll({
           where: {
             userId: user.id,
-            toWatch: false,
+            type: 'rec',
           },
           include: [
             {
@@ -168,7 +168,7 @@ router.get('/shows/:uid', async (req, res, next) => {
       userShows = await UserShow.findAll({
         where: {
           userId: req.params.uid,
-          toWatch: false,
+          type: 'rec',
         },
         include: [
           {
@@ -194,7 +194,7 @@ router.get('/showsToWatch', checkJwt, async (req, res, next) => {
       const toWatch = await UserShow.findAll({
         where: {
           userId: user.id,
-          toWatch: true,
+          type: 'watch',
         },
         include: [
           {
@@ -228,7 +228,7 @@ router.get('/recs', checkJwt, async (req, res, next) => {
           const recs = await UserShow.findAll({
             where: {
               userId: followedId,
-              toWatch: false,
+              type: 'rec',
             },
             include: [
               {
@@ -277,7 +277,7 @@ router.get('/following/:uid', async (req, res, next) => {
   }
 });
 
-router.put('/addShow/:toWatch', checkJwt, async (req, res, next) => {
+router.put('/addShow/:type', checkJwt, async (req, res, next) => {
   try {
     const show = req.body;
     // get the id of the show from the database
@@ -308,7 +308,7 @@ router.put('/addShow/:toWatch', checkJwt, async (req, res, next) => {
       res.sendStatus(404);
       return;
     }
-    const toWatch = req.params.toWatch;
+    const type = req.params.type;
     await user.addShow(showId);
     const userShow = await UserShow.findOne({
       where: {
@@ -325,7 +325,7 @@ router.put('/addShow/:toWatch', checkJwt, async (req, res, next) => {
       ],
     });
     userShow.description = show.description;
-    userShow.toWatch = toWatch;
+    userShow.type = type;
     userShow.save();
     console.log('userShow', userShow);
 
@@ -473,7 +473,7 @@ router.put('/switchShow', checkJwt, async (req, res, next) => {
         },
       ],
     });
-    updatedUserShow.toWatch = false;
+    updatedUserShow.type = 'rec';
     updatedUserShow.description = req.body.description;
     updatedUserShow.save();
     res.send(updatedUserShow);

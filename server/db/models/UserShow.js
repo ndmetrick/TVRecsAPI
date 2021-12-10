@@ -8,12 +8,15 @@ const UserShow = db.define('userShows', {
     autoIncrement: true,
     unique: true,
   },
-  toWatch: {
-    type: Sequelize.BOOLEAN,
-    default: false,
+  type: {
+    type: Sequelize.ENUM('rec', 'watch', 'seen'),
+    default: 'rec',
   },
   description: {
     type: Sequelize.STRING,
+  },
+  visible: {
+    type: Sequelize.BOOLEAN,
   },
 });
 
