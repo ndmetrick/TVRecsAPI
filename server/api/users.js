@@ -383,6 +383,24 @@ router.put('/changeUserTags', checkJwt, async (req, res, next) => {
   }
 });
 
+router.put('/changeCountry', checkJwt, async (req, res, next) => {
+  try {
+    const decoded = jwtDecode(req.headers.authorization);
+    const user = await findUserFromToken(decoded);
+    if (!user) {
+      res.sendStatus(404);
+      return;
+    }
+    const { newCountry } = req.body;
+    console.log('this is the new country', newCountry);
+    user.country = newCountry;
+    user.save();
+    res.send(newCountry);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.put('/changeShowTags', checkJwt, async (req, res, next) => {
   try {
     const decoded = jwtDecode(req.headers.authorization);
