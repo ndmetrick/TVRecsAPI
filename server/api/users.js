@@ -395,7 +395,7 @@ router.put('/changeCountry', checkJwt, async (req, res, next) => {
     console.log('this is the new country', newCountry);
     user.country = newCountry;
     user.save();
-    res.send(newCountry);
+    res.send(user);
   } catch (err) {
     next(err);
   }
