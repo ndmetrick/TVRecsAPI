@@ -129,10 +129,9 @@ router.get('/login', checkJwt, async (req, res, next) => {
       res.send(user);
     } else {
       const decoded = jwtDecode(req.headers.authorization);
-      console.log('i am in decoded', decoded);
       user = await User.create({
-        email: decoded.email,
-        username: decoded.name,
+        email: decoded.name,
+        username: decoded.nickname,
         auth0Id: decoded.sub,
       });
       res.send(user);
