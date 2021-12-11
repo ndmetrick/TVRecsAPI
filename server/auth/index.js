@@ -64,6 +64,7 @@ router.get('/login', checkJwt, async (req, res, next) => {
       //***** */
       console.log('CANNOT FIND A USER so I am making a new one');
       const decoded = jwtDecode(req.headers.authorization);
+      console.log('d', decoded);
       user = await User.create({
         email: decoded.email,
         username: decoded.username,
