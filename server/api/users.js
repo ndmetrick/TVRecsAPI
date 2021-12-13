@@ -63,6 +63,7 @@ router.get('/authInfo', (req, res, next) => {
 
 router.get('/keys/:api', (req, res, next) => {
   try {
+    console.log('got in here to keys');
     const api = req.params.api;
     if (api === 'omdb') res.send(process.env.OMDB);
     if (api === 'tmdb') res.send(process.env.TMDB);
@@ -80,7 +81,6 @@ router.get('/all', async (req, res, next) => {
         res.send(otherUsers);
       }
     } else {
-      console.log('in here it is', req.headers.authorization);
       const decoded = jwtDecode(req.headers.authorization);
       let user = await findUserFromToken(decoded);
       if (user) {
@@ -129,9 +129,10 @@ router.get('/login', checkJwt, async (req, res, next) => {
       res.send(user);
     } else {
       const decoded = jwtDecode(req.headers.authorization);
+      console.log('decoded is this now', decoded);
       user = await User.create({
         email: decoded.name,
-        username: decoded.nickname,
+        username: decoded['https://mynamespace/username'],
         auth0Id: decoded.sub,
       });
       res.send(user);
@@ -289,13 +290,11 @@ router.put('/addShow/:type', checkJwt, async (req, res, next) => {
     });
     // if the show isn't already in the database, add it and then get the id
     if (!foundShowInDatabase) {
-      const { imdbId, imageUrl, streaming, purchase } = show;
+      const { imdbId, imageUrl } = show;
       foundShowInDatabase = await Show.create({
         name: show.showName,
         imdbId,
         imageUrl,
-        streaming,
-        purchase,
       });
     }
     const showId = foundShowInDatabase.id;
