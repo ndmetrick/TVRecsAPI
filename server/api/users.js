@@ -217,6 +217,35 @@ router.get('/showsToWatch', checkJwt, async (req, res, next) => {
   }
 });
 
+router.get('/seenShows', checkJwt, async (req, res, next) => {
+  try {
+    const decoded = jwtDecode(req.headers.authorization);
+    const user = await findUserFromToken(decoded);
+    if (user) {
+      const seen = await UserShow.findAll({
+        where: {
+          userId: user.id,
+          type: 'seen',
+        },
+        include: [
+          {
+            model: Show,
+          },
+          {
+            model: Tag,
+          },
+        ],
+      });
+      res.send(seen);
+    } else {
+      res.sendStatus(404);
+      // add message
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/recs', checkJwt, async (req, res, next) => {
   try {
     const decoded = jwtDecode(req.headers.authorization);
@@ -457,7 +486,6 @@ router.put('/switchShow', checkJwt, async (req, res, next) => {
       res.sendStatus(404);
       return;
     }
-    console.log('this is usershowid', req.body.userShowId);
     const userShow = await UserShow.findOne({
       where: {
         id: req.body.userShowId,
@@ -477,10 +505,10 @@ router.put('/switchShow', checkJwt, async (req, res, next) => {
       return;
     }
 
-    if (req.body.tagIds) {
-      await userShow.setTags(req.body.tagIds);
-    }
-
+    // if (req.body.tagIds) {
+    //   await userShow.setTags(req.body.tagIds);
+    // }
+    const oldType = userShow.type;
     const updatedUserShow = await UserShow.findByPk(userShow.id, {
       include: [
         {
@@ -491,10 +519,10 @@ router.put('/switchShow', checkJwt, async (req, res, next) => {
         },
       ],
     });
-    updatedUserShow.type = 'rec';
+    updatedUserShow.type = req.body.newType;
     updatedUserShow.description = req.body.description;
     updatedUserShow.save();
-    res.send(updatedUserShow);
+    res.send({ updatedUserShow, oldType });
   } catch (err) {
     next(err);
   }
