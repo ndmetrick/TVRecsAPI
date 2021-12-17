@@ -251,35 +251,33 @@ router.get('/recs', checkJwt, async (req, res, next) => {
     const decoded = jwtDecode(req.headers.authorization);
     const user = await findUserFromToken(decoded);
     if (user) {
-      if (user) {
-        const following = await user.getFollowed();
-        let followedRecs = [];
-        for (let i = 0; i < following.length; i++) {
-          const followedId = following[i].id;
-          const recs = await UserShow.findAll({
-            where: {
-              userId: followedId,
-              type: 'rec',
+      const following = await user.getFollowed();
+      let followedRecs = [];
+      for (let i = 0; i < following.length; i++) {
+        const followedId = following[i].id;
+        const recs = await UserShow.findAll({
+          where: {
+            userId: followedId,
+            type: 'rec',
+          },
+          include: [
+            {
+              model: Show,
             },
-            include: [
-              {
-                model: Show,
+            {
+              model: Tag,
+            },
+            {
+              model: User,
+              where: {
+                id: followedId,
               },
-              {
-                model: Tag,
-              },
-              {
-                model: User,
-                where: {
-                  id: followedId,
-                },
-              },
-            ],
-          });
-          followedRecs = [...followedRecs, ...recs];
-        }
-        res.send(followedRecs);
+            },
+          ],
+        });
+        followedRecs = [...followedRecs, ...recs];
       }
+      res.send(followedRecs);
     }
   } catch (err) {
     next(err);
@@ -289,7 +287,8 @@ router.get('/recs', checkJwt, async (req, res, next) => {
 router.get('/following/:uid', async (req, res, next) => {
   try {
     let user;
-    if (typeof req.params.uid === 'number') {
+    if (req.params.uid !== 'undefined') {
+      console.log('i got in here');
       user = await User.findByPk(req.params.uid);
     } else if (req.headers.authorization) {
       console.log(
@@ -301,6 +300,7 @@ router.get('/following/:uid', async (req, res, next) => {
     }
     if (user) {
       const followed = await user.getFollowed();
+      console.log('followed on back end', followed);
       res.send(followed);
     }
   } catch (err) {
