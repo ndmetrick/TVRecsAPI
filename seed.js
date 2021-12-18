@@ -44,7 +44,6 @@ async function seed() {
       { name: 'documentaries', type: 'profile' },
       { name: 'teen', type: 'tv' },
       { name: 'cringey', type: 'tv' },
-      { name: 'cringey', type: 'warning' },
       { name: 'miniseries', type: 'unassigned' },
       { name: 'musical', type: 'tv' },
       { name: 'musicals', type: 'profile' },
