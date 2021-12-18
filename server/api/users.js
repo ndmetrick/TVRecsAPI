@@ -300,7 +300,6 @@ router.get('/following/:uid', async (req, res, next) => {
     }
     if (user) {
       const followed = await user.getFollowed();
-      console.log('followed on back end', followed);
       res.send(followed);
     }
   } catch (err) {

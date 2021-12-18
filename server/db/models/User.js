@@ -30,15 +30,12 @@ const User = db.define('users', {
     defaultValue: 'US',
   },
   filter: {
-    type: Sequelize.ENUM(
-      'collapse-allow',
-      'collapse-exclude',
-      'expand-allow',
-      'expand-exclude'
-    ),
-    defaultValue: 'collapse-allow',
+    type: Sequelize.STRING,
   },
   description: {
+    type: Sequelize.STRING,
+  },
+  image: {
     type: Sequelize.STRING,
   },
 });
