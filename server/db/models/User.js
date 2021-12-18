@@ -38,6 +38,9 @@ const User = db.define('users', {
     ),
     defaultValue: 'collapse-allow',
   },
+  description: {
+    type: Sequelize.STRING,
+  },
 });
 
 module.exports = User;

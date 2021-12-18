@@ -367,7 +367,7 @@ router.put('/addShow/:type', checkJwt, async (req, res, next) => {
 router.get('/getUserTags/:uid', async (req, res, next) => {
   try {
     let user = null;
-    if (typeof req.params.uid === 'number') {
+    if (req.params.uid !== 'undefined') {
       user = await User.findByPk(req.params.uid);
     } else if (req.headers.authorization) {
       const decoded = jwtDecode(req.headers.authorization);
@@ -403,9 +403,14 @@ router.put('/changeUserTags', checkJwt, async (req, res, next) => {
       res.sendStatus(404);
       return;
     }
-    const { tags } = req.body;
-    user.setTags(tags);
-    res.send(tags);
+    const { userTagIds, description } = req.body;
+    console.log('this is the tags', userTagIds);
+    await user.setTags(userTagIds);
+    user.description = description;
+    user.save();
+    const tags = await user.getTags();
+    const tagsAndDescription = { tags, description };
+    res.send(tagsAndDescription);
   } catch (err) {
     next(err);
   }
