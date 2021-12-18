@@ -38,7 +38,7 @@ async function seed() {
       { name: 'transgender/non-binary characters', type: 'unassigned' },
       { name: 'about friendship', type: 'unassigned' },
       { name: 'LGBTQ main characters', type: 'tv' },
-      { name: 'LGB main characters', type: 'unassigned' },
+      { name: 'LGB main characters', type: 'tv' },
       { name: 'true crime', type: 'unassigned' },
       { name: 'documentary', type: 'tv' },
       { name: 'documentaries', type: 'profile' },
