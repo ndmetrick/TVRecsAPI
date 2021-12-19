@@ -352,7 +352,6 @@ router.put('/addShow/:type', checkJwt, async (req, res, next) => {
         },
       ],
     });
-    userShow.description = show.description;
     userShow.type = type;
     userShow.save();
     console.log('userShow', userShow);
@@ -403,8 +402,8 @@ router.put('/changeUserTags', checkJwt, async (req, res, next) => {
       return;
     }
     const { userTagIds, description } = req.body;
-    console.log('this is the tags', userTagIds);
     await user.setTags(userTagIds);
+    console.log('this is description', description);
     user.description = description;
     user.save();
     const tags = await user.getTags();
@@ -441,8 +440,7 @@ router.put('/changeShowTags', checkJwt, async (req, res, next) => {
       res.sendStatus(404);
       return;
     }
-    const { tagIds } = req.body;
-    console.log('i got this far', tagIds);
+    const { tagIds, description } = req.body;
     const userShow = await UserShow.findOne({
       where: {
         id: req.body.userShowId,
@@ -473,9 +471,10 @@ router.put('/changeShowTags', checkJwt, async (req, res, next) => {
         },
       ],
     });
+    console.log('req.body in changeUserTags', req.body);
 
-    console.log('updatedUserShow', updatedUserShow);
-
+    updatedUserShow.description = req.body.description;
+    updatedUserShow.save();
     res.send(updatedUserShow);
   } catch (err) {
     next(err);
@@ -509,24 +508,22 @@ router.put('/switchShow', checkJwt, async (req, res, next) => {
       return;
     }
 
-    // if (req.body.tagIds) {
-    //   await userShow.setTags(req.body.tagIds);
-    // }
+    //  const updatedUserShow = await UserShow.findByPk(userShow.id, {
+    //    include: [
+    //      {
+    //        model: Show,
+    //      },
+    //      {
+    //        model: Tag,
+    //      },
+    //    ],
+    //  });
+    console.log('i got here, reqbody', req.body.newType);
     const oldType = userShow.type;
-    const updatedUserShow = await UserShow.findByPk(userShow.id, {
-      include: [
-        {
-          model: Show,
-        },
-        {
-          model: Tag,
-        },
-      ],
-    });
-    updatedUserShow.type = req.body.newType;
-    updatedUserShow.description = req.body.description;
-    updatedUserShow.save();
-    res.send({ updatedUserShow, oldType });
+    userShow.type = req.body.newType;
+    userShow.save();
+
+    res.send({ userShow, oldType });
   } catch (err) {
     next(err);
   }
