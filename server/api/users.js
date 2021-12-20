@@ -36,13 +36,40 @@ const findUserFromToken = async (token) => {
 
 router.post('/addTags', checkJwt, async (req, res, next) => {
   try {
+    console.log('got in here againt');
     if (req.headers.authorization) {
       const decoded = jwtDecode(req.headers.authorization);
       let user = await findUserFromToken(decoded);
       if (user) {
-        if (user.username === 'ndmetrick@gmail.com') {
-          const tag = req.body.tag;
+        if (user.username === 'ndmetrick') {
+          console.log('reqbody', req.body);
+          const { tag } = req.body;
           await Tag.create(tag);
+          res.sendStatus(200);
+        }
+      }
+    }
+  } catch (err) {
+    console.error(err);
+  }
+});
+
+router.delete('/deleteTags', checkJwt, async (req, res, next) => {
+  try {
+    console.log('got in here to delete');
+    if (req.headers.authorization) {
+      const decoded = jwtDecode(req.headers.authorization);
+      let user = await findUserFromToken(decoded);
+      if (user) {
+        if (user.username === 'ndmetrick') {
+          console.log('got in here to username');
+          const { tagName } = req.body;
+          const tag = await Tag.findOne({
+            where: {
+              name: tagName,
+            },
+          });
+          await tag.destroy();
           res.sendStatus(200);
         }
       }
