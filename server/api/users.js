@@ -7,6 +7,7 @@ const Tag = require('../db/models/Tag');
 require('dotenv').config({ path: './FIND.env' });
 const { auth } = require('express-oauth2-jwt-bearer');
 Sequelize = require('sequelize');
+const db = require('../db/db');
 
 // Authorization middleware. When used, the Access Token must
 // exist and be verified against the Auth0 JSON Web Key Set.
@@ -102,24 +103,138 @@ router.get('/keys/:api', (req, res, next) => {
 
 router.get('/all', async (req, res, next) => {
   try {
+    console.log('helpppp');
     if (!req.headers.authorization) {
       const otherUsers = await User.findAll();
       if (otherUsers) {
+        console.log('here it is', otherUsers);
         res.send(otherUsers);
       }
     } else {
       const decoded = jwtDecode(req.headers.authorization);
       let user = await findUserFromToken(decoded);
       if (user) {
+        const check = await User.findAll({
+          attributes: ['username', 'id'],
+        });
+        console.log('check', check);
         const otherUsers = await User.findAll({
           where: {
-            id: {
-              [Sequelize.Op.ne]: user.id,
-            },
+            id: { [Sequelize.Op.ne]: user.id },
           },
+          attributes: ['username', 'id'],
         });
+        console.log('otheruers', otherUsers);
         res.send(otherUsers);
       }
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/getMatchingUsers', async (req, res, next) => {
+  try {
+    console.log('got to get matching users');
+    const { filters } = req.body;
+    console.log('filters', filters);
+    let sqlQuery = `SELECT users.id, users.username
+      FROM   users `;
+    const sequelize = new Sequelize(`postgres://localhost:5432/tv-recs`);
+
+    if (filters['commonTags']) {
+      // SELECT users.id, users.username, COUNT(*) as how_many_shared_tags
+      // FROM   users
+      const decoded = jwtDecode(req.headers.authorization);
+      const user = await findUserFromToken(decoded);
+      const userId = user.id;
+      const numTagsInCommon = filters['commonTags'];
+
+      sqlQuery += `JOIN "ProfileTags" ON "ProfileTags"."userId" = users.id
+                     AND "ProfileTags"."tagId" IN(SELECT "tagId" FROM "ProfileTags" WHERE "userId" = ${userId})
+    WHERE users.id != ${userId}
+    GROUP BY users.id, users.username
+    HAVING COUNT(*) >= ${numTagsInCommon}`;
+    }
+
+    if (filters['chooseTags']) {
+      const tagIds = filters['chooseTags'];
+      sqlQuery += `WHERE users.id IN (SELECT "userId" FROM "ProfileTags" WHERE "tagId" = ${tagIds[0]})`;
+      tagIds.slice(1).forEach((tagId) => {
+        sqlQuery += `AND users.id IN (SELECT "userId" FROM "ProfileTags" WHERE "tagId" = ${tagId})`;
+      });
+    }
+
+    if (filters['filterCount'] === 1) {
+      if (filters['chooseShow']) {
+        const chosenShowImdbId = filters['chooseShow'].toString();
+        const chosenShow = await Show.findOne({
+          where: {
+            imdbId: chosenShowImdbId,
+          },
+        });
+        const chosenShowId = chosenShow.id;
+        sqlQuery += `WHERE users.id IN (SELECT "userId" FROM "userShows" WHERE "showId" = ${chosenShowId})`;
+      }
+      if (filters['commonShows']) {
+        const decoded = jwtDecode(req.headers.authorization);
+        const user = await findUserFromToken(decoded);
+        const userId = user.id;
+        const numShowsInCommon = filters['commonShows'];
+
+        sqlQuery += `JOIN "userShows" ON "userShows"."userId" = users.id
+                       AND "userShows"."showId" IN(SELECT "showId" FROM "userShows" WHERE "userId" = ${userId})
+      WHERE users.id != ${userId}
+      GROUP BY users.id, users.username
+      HAVING COUNT(*) >= ${numShowsInCommon}
+      ORDER by COUNT(*) DESC`;
+      }
+
+      if (filters['chooseCommonShows']) {
+        const showIds = filters['chooseCommonShows'];
+        sqlQuery += `WHERE users.id IN (SELECT "userId" FROM "userShows" WHERE "showId" = ${showIds[0]})`;
+        showIds.slice(1).forEach((showId) => {
+          sqlQuery += `AND users.id IN (SELECT "userId" FROM "userShows" WHERE "showId" = ${showId})`;
+        });
+      }
+    } else {
+      if (filters['chooseShow']) {
+        const chosenShowImdbId = filters['chooseShow'].toString();
+        const chosenShow = await Show.findOne({
+          where: {
+            imdbId: chosenShowImdbId,
+          },
+        });
+        const chosenShowId = chosenShow.id;
+        sqlQuery += `AND users.id IN (SELECT "userId" FROM "userShows" WHERE "showId" = ${chosenShowId})`;
+      }
+
+      if (filters['commonShows']) {
+        const decoded = jwtDecode(req.headers.authorization);
+        const user = await findUserFromToken(decoded);
+        const userId = user.id;
+        const numShowsInCommon = filters['commonShows'];
+
+        sqlQuery += `AND users.id IN(SELECT users.id
+      FROM   users
+      JOIN "userShows" ON "userShows"."userId" = users.id
+                       AND "userShows"."showId" IN(SELECT "showId" FROM "userShows" WHERE "userId" = ${userId})
+      WHERE users.id != ${userId}
+      GROUP BY users.id, users.username
+      HAVING COUNT(*) >= ${numShowsInCommon})`;
+      }
+      if (filters['chooseCommonShows']) {
+        const showIds = filters['chooseCommonShows'];
+        showIds.forEach((showId) => {
+          sqlQuery += `AND users.id IN (SELECT "userId" FROM "userShows" WHERE "showId" = ${showId})`;
+        });
+      }
+    }
+
+    const otherUsers = await sequelize.query(sqlQuery);
+    console.log('what does this do', otherUsers[0]);
+    if (otherUsers) {
+      res.send(otherUsers[0]);
     }
   } catch (err) {
     next(err);

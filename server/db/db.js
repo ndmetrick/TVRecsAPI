@@ -1,6 +1,5 @@
 const Sequelize = require('sequelize');
 const pkg = require('../../package.json');
-require('dotenv').config({ path: './FIND.env' });
 
 const databaseName = pkg.name;
 
