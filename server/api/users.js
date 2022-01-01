@@ -142,6 +142,10 @@ router.put('/getMatchingUsers', async (req, res, next) => {
       FROM   users `;
     console.log('i know this is this version');
 
+    const config = {
+      logging: false,
+    };
+
     if (process.env.DATABASE_URL) {
       config.dialectOptions = {
         ssl: {
