@@ -140,6 +140,7 @@ router.put('/getMatchingUsers', async (req, res, next) => {
     console.log('filters', filters);
     let sqlQuery = `SELECT users.id, users.username
       FROM   users `;
+    console.log('i know this is this version');
     const sequelize = new Sequelize(
       process.env.DATABASE_URL ?? `postgres://localhost:5432/tv-recs`
     );
