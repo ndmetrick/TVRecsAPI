@@ -140,7 +140,9 @@ router.put('/getMatchingUsers', async (req, res, next) => {
     console.log('filters', filters);
     let sqlQuery = `SELECT users.id, users.username
       FROM   users `;
-    const sequelize = new Sequelize(`postgres://localhost:5432/tv-recs`);
+    const sequelize = new Sequelize(
+      process.env.DATABASE_URL ?? `postgres://localhost:5432/tv-recs`
+    );
 
     if (filters['commonTags']) {
       // SELECT users.id, users.username, COUNT(*) as how_many_shared_tags
