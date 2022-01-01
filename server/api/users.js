@@ -155,7 +155,8 @@ router.put('/getMatchingUsers', async (req, res, next) => {
     }
 
     const sequelize = new Sequelize(
-      process.env.DATABASE_URL ?? `postgres://localhost:5432/tv-recs`
+      process.env.DATABASE_URL ?? `postgres://localhost:5432/${databaseName}`,
+      config
     );
 
     if (filters['commonTags']) {
