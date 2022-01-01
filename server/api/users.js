@@ -141,6 +141,15 @@ router.put('/getMatchingUsers', async (req, res, next) => {
     let sqlQuery = `SELECT users.id, users.username
       FROM   users `;
     console.log('i know this is this version');
+
+    if (process.env.DATABASE_URL) {
+      config.dialectOptions = {
+        ssl: {
+          rejectUnauthorized: false,
+        },
+      };
+    }
+
     const sequelize = new Sequelize(
       process.env.DATABASE_URL ?? `postgres://localhost:5432/tv-recs`
     );
