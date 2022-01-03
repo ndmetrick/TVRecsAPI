@@ -8,6 +8,7 @@ require('dotenv').config({ path: './FIND.env' });
 const { auth } = require('express-oauth2-jwt-bearer');
 Sequelize = require('sequelize');
 const db = require('../db/db');
+const pkg = require('../../package.json');
 
 // Authorization middleware. When used, the Access Token must
 // exist and be verified against the Auth0 JSON Web Key Set.
@@ -153,6 +154,7 @@ router.put('/getMatchingUsers', async (req, res, next) => {
         },
       };
     }
+    const databaseName = pkg.name;
 
     const sequelize = new Sequelize(
       process.env.DATABASE_URL ?? `postgres://localhost:5432/${databaseName}`,
