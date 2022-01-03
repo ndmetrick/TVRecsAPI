@@ -136,12 +136,17 @@ router.get('/all', async (req, res, next) => {
 
 router.put('/getMatchingUsers', async (req, res, next) => {
   try {
-    console.log('got to get matching users');
     const { filters } = req.body;
     console.log('filters', filters);
     let sqlQuery = `SELECT users.id, users.username
       FROM   users `;
     console.log('i know this is this version');
+    let userId;
+    if (req.headers.authorization) {
+      const decoded = jwtDecode(req.headers.authorization);
+      const user = await findUserFromToken(decoded);
+      userId = user.id;
+    }
 
     const config = {
       logging: false,
@@ -164,9 +169,6 @@ router.put('/getMatchingUsers', async (req, res, next) => {
     if (filters['commonTags']) {
       // SELECT users.id, users.username, COUNT(*) as how_many_shared_tags
       // FROM   users
-      const decoded = jwtDecode(req.headers.authorization);
-      const user = await findUserFromToken(decoded);
-      const userId = user.id;
       const numTagsInCommon = filters['commonTags'];
 
       sqlQuery += `JOIN "ProfileTags" ON "ProfileTags"."userId" = users.id
@@ -196,17 +198,13 @@ router.put('/getMatchingUsers', async (req, res, next) => {
         sqlQuery += `WHERE users.id IN (SELECT "userId" FROM "userShows" WHERE "showId" = ${chosenShowId})`;
       }
       if (filters['commonShows']) {
-        const decoded = jwtDecode(req.headers.authorization);
-        const user = await findUserFromToken(decoded);
-        const userId = user.id;
         const numShowsInCommon = filters['commonShows'];
 
         sqlQuery += `JOIN "userShows" ON "userShows"."userId" = users.id
                        AND "userShows"."showId" IN(SELECT "showId" FROM "userShows" WHERE "userId" = ${userId})
       WHERE users.id != ${userId}
       GROUP BY users.id, users.username
-      HAVING COUNT(*) >= ${numShowsInCommon}
-      ORDER by COUNT(*) DESC`;
+      HAVING COUNT(*) >= ${numShowsInCommon}`;
       }
 
       if (filters['chooseCommonShows']) {
@@ -229,9 +227,6 @@ router.put('/getMatchingUsers', async (req, res, next) => {
       }
 
       if (filters['commonShows']) {
-        const decoded = jwtDecode(req.headers.authorization);
-        const user = await findUserFromToken(decoded);
-        const userId = user.id;
         const numShowsInCommon = filters['commonShows'];
 
         sqlQuery += `AND users.id IN(SELECT users.id
@@ -248,6 +243,10 @@ router.put('/getMatchingUsers', async (req, res, next) => {
           sqlQuery += `AND users.id IN (SELECT "userId" FROM "userShows" WHERE "showId" = ${showId})`;
         });
       }
+    }
+
+    if (filters['excludeFollowed']) {
+      sqlQuery += `AND users.id NOT IN (SELECT "followed" FROM "Follow" WHERE "follower" = ${userId})`;
     }
 
     const otherUsers = await sequelize.query(sqlQuery);
