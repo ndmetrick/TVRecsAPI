@@ -319,18 +319,18 @@ router.put('/getMatchingRecs', async (req, res, next) => {
       ON "UserShowTags"."userShowId" = "userShows".id))`
     }
 
-    // if (filters['descriptionContent']) {
-    //   const descriptionValues = filters['descriptionContent']
+    if (filters['descriptionValue']) {
+      const descriptionValues = filters['descriptionValue']
 
-    //   sqlQuery += `AND "userShows".id IN (SELECT "userShows".id FROM "userShows"
-    //   WHERE lower ( "userShows".description ) LIKE lower (${descriptionValues[0]})`
+      sqlQuery += `AND "userShows".id IN (SELECT "userShows".id FROM "userShows"
+      WHERE lower ("userShows".description) LIKE lower ('%${descriptionValues[0]}%')`
 
-    //   descriptionValues.slice(1).forEach((word) => {
-    //     sqlQuery += `OR "userShows".description LIKE ${word}`
-    //   })
+      descriptionValues.slice(1).forEach((word) => {
+        sqlQuery += `OR lower ("userShows".description) LIKE lower ('%${word}%')`
+      })
 
-    //   sqlQuery += `)`
-    // }
+      sqlQuery += `)`
+    }
 
     if (filters['chooseMinRecs']) {
       const minRecs = filters['chooseMinRecs']
@@ -359,6 +359,7 @@ router.put('/getMatchingRecs', async (req, res, next) => {
     } else {
       sqlQuery += `ORDER BY "userShows"."updatedAt" DESC`
       const recs = await sequelize.query(sqlQuery)
+      console.log('query', sqlQuery)
       console.log('what does this do', recs[0])
       if (recs) {
         res.send(recs[0])
