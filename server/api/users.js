@@ -272,7 +272,7 @@ router.put('/getMatchingRecs', async (req, res, next) => {
     ON "userShows"."showId" = shows.id
     INNER JOIN users
     ON "userShows"."userId" = users.id
-    WHERE "userShows"."userId" IN (SELECT "followed" FROM "Follow" WHERE "follower" = ${userId})`
+    WHERE "userShows"."userId" IN (SELECT "followed" FROM "Follow" WHERE "follower" = ${userId}) AND "userShows".type = "rec"`
 
     const config = {
       logging: false,
@@ -584,7 +584,7 @@ router.get('/recs', checkJwt, async (req, res, next) => {
     ON "userShows"."showId" = shows.id
     INNER JOIN users
     ON "userShows"."userId" = users.id
-    WHERE "userShows"."userId" IN (SELECT "followed" FROM "Follow" WHERE "follower" = ${userId})
+    WHERE "userShows"."userId" IN (SELECT "followed" FROM "Follow" WHERE "follower" = ${userId}) AND "userShow".type = "rec"
     ORDER BY "userShows"."updatedAt" DESC`
 
     const config = {
