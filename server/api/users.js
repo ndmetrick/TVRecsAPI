@@ -9,6 +9,7 @@ const { auth } = require('express-oauth2-jwt-bearer')
 Sequelize = require('sequelize')
 const db = require('../db/db')
 const pkg = require('../../package.json')
+const axios = require('axios')
 
 // Authorization middleware. When used, the Access Token must
 // exist and be verified against the Auth0 JSON Web Key Set.
@@ -34,6 +35,37 @@ const findUserFromToken = async (token) => {
     },
   })
   return users
+}
+
+const getStreaming = (watchProviders) => {
+  const stream = watchProviders ? watchProviders.flatrate : null
+  let streamingContainer
+  let streaming
+  if (stream) {
+    const streamingInfo = stream && stream.map((option) => option.provider_name)
+    if (streamingInfo) {
+      const string = streamingInfo.join(', ')
+      const options = {}
+      streamingInfo.forEach((streamer) => {
+        options[streamer] = true
+      })
+      streamingContainer = { string, options }
+    }
+  }
+  return streamingContainer
+}
+
+const getPurchase = (watchProviders) => {
+  const buy = watchProviders ? watchProviders.buy : null
+  let purchaseInfo = ''
+  if (buy) {
+    const purchaseOptions =
+      buy && buy.map((option) => option.provider_name).join(', ')
+    if (purchaseOptions) {
+      purchaseInfo = purchaseOptions
+    }
+  }
+  return purchaseInfo
 }
 
 router.post('/addTags', checkJwt, async (req, res, next) => {
@@ -339,7 +371,7 @@ router.put('/getMatchingRecs', async (req, res, next) => {
       GROUP BY "userShows"."showId"
       HAVING COUNT(*) >= ${minRecs})`
     }
-
+    let recs
     if (filters['chooseAnyTags']) {
       const tagIds = filters['chooseAnyTags']
       sqlQuery += `AND "userShows".id IN (SELECT "userShows".id FROM "userShows"
@@ -347,21 +379,64 @@ router.put('/getMatchingRecs', async (req, res, next) => {
       ON "UserShowTags"."userShowId" = "userShows".id WHERE "UserShowTags"."tagId" IN (:tagIds))`
 
       const endQuery = `ORDER BY "userShows"."updatedAt" DESC`
-      const recs = await sequelize.query(
+      recs = await sequelize.query(
         sqlQuery,
         { replacements: { tagIds } },
         endQuery
       )
       console.log('what does this do', recs[0])
-      if (recs) {
-        res.send(recs[0])
-      }
     } else {
       sqlQuery += `ORDER BY "userShows"."updatedAt" DESC`
-      const recs = await sequelize.query(sqlQuery)
+      recs = await sequelize.query(sqlQuery)
       console.log('query', sqlQuery)
       console.log('what does this do', recs[0])
-      if (recs) {
+    }
+
+    if (recs) {
+      if (filters['chooseStreamers']) {
+        console.log('i got into this part')
+        const { streamers, watchProviders } = filters['chooseStreamers']
+
+        const filteredRecs = []
+        const newWatchProviders = { ...watchProviders }
+
+        for (let i = 0; i < recs[0].length; i++) {
+          let rec = recs[0][i]
+          if (
+            watchProviders[rec.imdbId] &&
+            (new Date() - watchProviders[rec.imdbId].date) /
+              (1000 * 60 * 60 * 24) <
+              7
+          ) {
+            const streamOptions = watchProviders[rec.imdbId].streaming.options
+            if (streamers.find((streamer) => streamOptions[streamer.name]))
+              filteredRecs.push(rec)
+          } else {
+            const APIString = `https://api.themoviedb.org/3/tv/${rec.imdbId}?api_key=${process.env.TMDB}&append_to_response=watch/providers`
+            const showInfo = await axios.get(APIString)
+            if (showInfo) {
+              const providersInfo =
+                showInfo.data['watch/providers'].results[user.country || 'US']
+              const streaming = getStreaming(providersInfo)
+              const purchase = getPurchase(providersInfo)
+              const overview = showInfo.data.overview
+              const info = {
+                overview: overview,
+                streaming: streaming,
+                purchase: purchase,
+                date: new Date(),
+              }
+              newWatchProviders[rec.imdbId] = info
+              const streamOptions = streaming.options
+              if (streamers.find((streamer) => streamOptions[streamer.name]))
+                filteredRecs.push(rec)
+            }
+          }
+        }
+        console.log('recs and watch providers', filteredRecs, newWatchProviders)
+        const recsAndWatchProviders = { recs: filteredRecs, newWatchProviders }
+        res.send(recsAndWatchProviders)
+      } else {
         res.send(recs[0])
       }
     }
