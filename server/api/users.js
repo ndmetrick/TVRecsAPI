@@ -402,12 +402,19 @@ router.put('/getMatchingRecs', async (req, res, next) => {
 
         for (let i = 0; i < recs[0].length; i++) {
           let rec = recs[0][i]
+          console.log('rec', rec)
           if (
             watchProviders[rec.imdbId] &&
             (new Date() - watchProviders[rec.imdbId].date) /
               (1000 * 60 * 60 * 24) <
               7
           ) {
+            console.log(
+              'i am in here below',
+              watchProviders[rec.imdbId].streaming,
+              watchProviders[rec.imdbId]
+            )
+
             const streamOptions = watchProviders[rec.imdbId].streaming.options
             if (streamers.find((streamer) => streamOptions[streamer.name]))
               filteredRecs.push(rec)
@@ -427,6 +434,7 @@ router.put('/getMatchingRecs', async (req, res, next) => {
                 date: new Date(),
               }
               newWatchProviders[rec.imdbId] = info
+              console.log('streaming down here', streaming)
               const streamOptions = streaming.options
               if (streamers.find((streamer) => streamOptions[streamer.name]))
                 filteredRecs.push(rec)
