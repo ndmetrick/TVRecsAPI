@@ -74,7 +74,6 @@ const getPurchase = (watchProviders) => {
 
 router.post('/addTags', checkJwt, async (req, res, next) => {
   try {
-    console.log('got in here againt')
     if (req.headers.authorization) {
       const decoded = jwtDecode(req.headers.authorization)
       let user = await findUserFromToken(decoded)
@@ -94,13 +93,11 @@ router.post('/addTags', checkJwt, async (req, res, next) => {
 
 router.delete('/deleteTags', checkJwt, async (req, res, next) => {
   try {
-    console.log('got in here to delete')
     if (req.headers.authorization) {
       const decoded = jwtDecode(req.headers.authorization)
       let user = await findUserFromToken(decoded)
       if (user) {
         if (user.username === 'ndmetrick') {
-          console.log('got in here to username')
           const { tagName } = req.body
           const tag = await Tag.findOne({
             where: {
@@ -128,7 +125,6 @@ router.get('/authInfo', (req, res, next) => {
 
 router.get('/keys/:api', (req, res, next) => {
   try {
-    console.log('got in here to keys')
     const api = req.params.api
     if (api === 'omdb') res.send(process.env.OMDB)
     if (api === 'tmdb') res.send(process.env.TMDB)
@@ -140,11 +136,9 @@ router.get('/keys/:api', (req, res, next) => {
 
 router.get('/all', async (req, res, next) => {
   try {
-    console.log('helpppp')
     if (!req.headers.authorization) {
       const otherUsers = await User.findAll()
       if (otherUsers) {
-        console.log('here it is', otherUsers)
         res.send(otherUsers)
       }
     } else {
@@ -154,14 +148,12 @@ router.get('/all', async (req, res, next) => {
         const check = await User.findAll({
           attributes: ['username', 'id'],
         })
-        console.log('check', check)
         const otherUsers = await User.findAll({
           where: {
             id: { [Sequelize.Op.ne]: user.id },
           },
           attributes: ['username', 'id'],
         })
-        console.log('otheruers', otherUsers)
         res.send(otherUsers)
       }
     }
@@ -176,7 +168,6 @@ router.put('/getMatchingUsers', async (req, res, next) => {
     console.log('filters', filters)
     let sqlQuery = `SELECT users.id, users.username
       FROM   users `
-    console.log('i know this is this version')
     let userId
     if (req.headers.authorization) {
       const decoded = jwtDecode(req.headers.authorization)
@@ -286,7 +277,6 @@ router.put('/getMatchingUsers', async (req, res, next) => {
     }
 
     const otherUsers = await sequelize.query(sqlQuery)
-    console.log('what does this do', otherUsers[0])
     if (otherUsers) {
       res.send(otherUsers[0])
     }
@@ -398,7 +388,6 @@ router.put('/getMatchingRecs', async (req, res, next) => {
 
     if (recs) {
       if (filters['chooseStreamers']) {
-        console.log('i got into this part')
         const { streamers, watchProviders } = filters['chooseStreamers']
 
         const filteredRecs = []
@@ -406,19 +395,13 @@ router.put('/getMatchingRecs', async (req, res, next) => {
 
         for (let i = 0; i < recs[0].length; i++) {
           let rec = recs[0][i]
-          console.log('rec', rec)
+
           if (
             watchProviders[rec.imdbId] &&
             (new Date() - watchProviders[rec.imdbId].date) /
               (1000 * 60 * 60 * 24) <
               7
           ) {
-            console.log(
-              'i am in here below',
-              watchProviders[rec.imdbId].streaming,
-              watchProviders[rec.imdbId]
-            )
-
             const streamOptions = watchProviders[rec.imdbId].streaming.options
             if (streamers.find((streamer) => streamOptions[streamer.name]))
               filteredRecs.push(rec)
@@ -438,7 +421,7 @@ router.put('/getMatchingRecs', async (req, res, next) => {
                 date: new Date(),
               }
               newWatchProviders[rec.imdbId] = info
-              console.log('streaming down here', streaming)
+
               const streamOptions = streaming.options
               if (streamers.find((streamer) => streamOptions[streamer.name]))
                 filteredRecs.push(rec)
