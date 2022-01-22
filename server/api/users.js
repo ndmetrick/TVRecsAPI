@@ -40,7 +40,6 @@ const findUserFromToken = async (token) => {
 const getStreaming = (watchProviders) => {
   const stream = watchProviders ? watchProviders.flatrate : null
   let streamingContainer
-  let streaming
   if (stream) {
     const streamingInfo = stream && stream.map((option) => option.provider_name)
     if (streamingInfo) {
@@ -51,6 +50,11 @@ const getStreaming = (watchProviders) => {
       })
       streamingContainer = { string, options }
     }
+  }
+  if (!streamingContainer) {
+    const string = ''
+    const options = {}
+    streamingContainer = { string, options }
   }
   return streamingContainer
 }
