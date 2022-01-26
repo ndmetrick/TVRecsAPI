@@ -368,15 +368,14 @@ router.put('/getMatchingRecs', async (req, res, next) => {
 
     if (filters['chooseMinRecs']) {
       const minRecs = filters['chooseMinRecs']
-      sqlQuery += `AND "userShows".id IN (SELECT "userShows".id
-       FROM
-       "userShows"
-       INNER JOIN shows
+      sqlQuery += `AND "userShows"."showId" IN (SELECT "userShows"."showId"
+    FROM "userShows"
+    INNER JOIN shows
     ON "userShows"."showId" = shows.id
     INNER JOIN users
     ON "userShows"."userId" = users.id
-      WHERE "userShows"."userId" != ${userId}
-      GROUP BY "userShows".id, "userShows"."showId"
+    WHERE "userShows"."userId" IN (SELECT "followed" FROM "Follow" WHERE "follower" = ${userId}) AND "userShows".type = 'rec'
+      GROUP BY "userShows"."showId"
       HAVING COUNT(*) >= ${minRecs})`
     }
 
