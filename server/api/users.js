@@ -199,17 +199,19 @@ router.put('/getMatchingUsers', async (req, res, next) => {
       const numTagsInCommon = filters['commonTags']
 
       sqlQuery += `JOIN "ProfileTags" ON "ProfileTags"."userId" = users.id
-                     AND "ProfileTags"."tagId" IN(SELECT "tagId" FROM "ProfileTags" WHERE "userId" = ${userId})
-    WHERE users.id != ${userId}
+                     WHERE "ProfileTags"."tagId" IN(SELECT "ProfileTags"."tagId" FROM "ProfileTags" WHERE "ProfileTags"."userId" = ${userId})
+    AND users.id != ${userId}
     GROUP BY users.id, users.username
     HAVING COUNT(*) >= ${numTagsInCommon}`
     }
 
     if (filters['chooseTags']) {
       const tagIds = filters['chooseTags']
-      sqlQuery += `WHERE users.id IN (SELECT "userId" FROM "ProfileTags" WHERE "tagId" = ${tagIds[0]})`
+      sqlQuery += `WHERE users.id IN (SELECT "ProfileTags"."userId" FROM "ProfileTags"
+      WHERE "ProfileTags"."tagId" = ${tagIds[0]})`
       tagIds.slice(1).forEach((tagId) => {
-        sqlQuery += `AND users.id IN (SELECT "userId" FROM "ProfileTags" WHERE "tagId" = ${tagId})`
+        sqlQuery += `AND users.id IN (SELECT "ProfileTags"."userId" FROM "ProfileTags"
+        WHERE "ProfileTags"."tagId" = ${tagId})`
       })
     }
 
@@ -222,23 +224,25 @@ router.put('/getMatchingUsers', async (req, res, next) => {
           },
         })
         const chosenShowId = chosenShow.id
-        sqlQuery += `WHERE users.id IN (SELECT "userId" FROM "userShows" WHERE "showId" = ${chosenShowId})`
+        sqlQuery += `WHERE users.id IN (SELECT "userShows"."userId" FROM "userShows"
+        WHERE "userShows"."showId" = ${chosenShowId}
+        AND "userShows".type = 'rec')`
       }
       if (filters['commonShows']) {
         const numShowsInCommon = filters['commonShows']
 
-        sqlQuery += `JOIN "userShows" ON "userShows"."userId" = users.id
-                       AND "userShows"."showId" IN(SELECT "showId" FROM "userShows" WHERE "userId" = ${userId})
-      WHERE users.id != ${userId}
+        sqlQuery += `JOIN "userShows" ON "userShows"."userId" = users.id WHERE "userShows".type = 'rec'
+                       AND "userShows"."showId" IN(SELECT "userShows"."showId" FROM "userShows" WHERE "userShows"."userId" = ${userId} AND "userShows".type = 'rec')
+      AND users.id != ${userId}
       GROUP BY users.id, users.username
       HAVING COUNT(*) >= ${numShowsInCommon}`
       }
 
       if (filters['chooseCommonShows']) {
         const showIds = filters['chooseCommonShows']
-        sqlQuery += `WHERE users.id IN (SELECT "userId" FROM "userShows" WHERE "showId" = ${showIds[0]})`
+        sqlQuery += `WHERE users.id IN (SELECT "userShows"."userId" FROM "userShows" WHERE "userShows"."showId" = ${showIds[0]} AND "userShows".type = 'rec')`
         showIds.slice(1).forEach((showId) => {
-          sqlQuery += `AND users.id IN (SELECT "userId" FROM "userShows" WHERE "showId" = ${showId})`
+          sqlQuery += `AND users.id IN (SELECT "userShows"."userId" FROM "userShows" WHERE "userShows"."showId" = ${showId} AND "userShows".type = 'rec')`
         })
       }
     } else {
@@ -250,7 +254,7 @@ router.put('/getMatchingUsers', async (req, res, next) => {
           },
         })
         const chosenShowId = chosenShow.id
-        sqlQuery += `AND users.id IN (SELECT "userId" FROM "userShows" WHERE "showId" = ${chosenShowId})`
+        sqlQuery += `AND users.id IN (SELECT "userShows"."userId" FROM "userShows" WHERE "userShows"."showId" = ${chosenShowId} AND "userShows".type = 'rec')`
       }
 
       if (filters['commonShows']) {
@@ -258,22 +262,22 @@ router.put('/getMatchingUsers', async (req, res, next) => {
 
         sqlQuery += `AND users.id IN(SELECT users.id
       FROM   users
-      JOIN "userShows" ON "userShows"."userId" = users.id
-                       AND "userShows"."showId" IN(SELECT "showId" FROM "userShows" WHERE "userId" = ${userId})
-      WHERE users.id != ${userId}
+      JOIN "userShows" ON "userShows"."userId" = users.id WHERE "userShows".type = 'rec'
+                       AND "userShows"."showId" IN(SELECT "showId" FROM "userShows" WHERE "userId" = ${userId} and "userShows".type = 'rec')
+      AND users.id != ${userId}
       GROUP BY users.id, users.username
       HAVING COUNT(*) >= ${numShowsInCommon})`
       }
       if (filters['chooseCommonShows']) {
         const showIds = filters['chooseCommonShows']
         showIds.forEach((showId) => {
-          sqlQuery += `AND users.id IN (SELECT "userId" FROM "userShows" WHERE "showId" = ${showId})`
+          sqlQuery += `AND users.id IN (SELECT "userShows"."userId" FROM "userShows" WHERE "userShows"."showId" = ${showId} AND "userShows".type = 'rec')`
         })
       }
     }
 
     if (filters['excludeFollowed']) {
-      sqlQuery += `AND users.id NOT IN (SELECT "followed" FROM "Follow" WHERE "follower" = ${userId})`
+      sqlQuery += `AND users.id NOT IN (SELECT "Follow"."followed" FROM "Follow" WHERE "Follow"."follower" = ${userId})`
     }
 
     const otherUsers = await sequelize.query(sqlQuery)
@@ -298,7 +302,7 @@ router.put('/getMatchingRecs', async (req, res, next) => {
     ON "userShows"."showId" = shows.id
     INNER JOIN users
     ON "userShows"."userId" = users.id
-    WHERE "userShows"."userId" IN (SELECT "followed" FROM "Follow" WHERE "follower" = ${userId}) AND "userShows".type = 'rec'`
+    WHERE "userShows"."userId" IN (SELECT "Follow"."followed" FROM "Follow" WHERE "Follow"."follower" = ${userId}) AND "userShows".type = 'rec' AND "userShows"."showId" NOT IN (SELECT "userShows"."showId" from "userShows" WHERE "userShows".type = 'seen' AND "userShows"."userId" = ${userId})`
 
     const config = {
       logging: false,
@@ -370,11 +374,7 @@ router.put('/getMatchingRecs', async (req, res, next) => {
       const minRecs = filters['chooseMinRecs']
       sqlQuery += `AND "userShows"."showId" IN (SELECT "userShows"."showId"
     FROM "userShows"
-    INNER JOIN shows
-    ON "userShows"."showId" = shows.id
-    INNER JOIN users
-    ON "userShows"."userId" = users.id
-    WHERE "userShows"."userId" IN (SELECT "followed" FROM "Follow" WHERE "follower" = ${userId}) AND "userShows".type = 'rec'
+    WHERE "userShows"."userId" IN (SELECT "followed" FROM "Follow" WHERE "follower" = ${userId}) AND "userShows".type = 'rec' AND "userShows"."showId" NOT IN (SELECT "userShows"."showId" from "userShows" WHERE "userShows".type = 'seen' AND "userShows"."userId" = ${userId})
       GROUP BY "userShows"."showId"
       HAVING COUNT(*) >= ${minRecs})`
     }
@@ -668,7 +668,7 @@ router.get('/recs', checkJwt, async (req, res, next) => {
     ON "userShows"."showId" = shows.id
     INNER JOIN users
     ON "userShows"."userId" = users.id
-    WHERE "userShows"."userId" IN (SELECT "followed" FROM "Follow" WHERE "follower" = ${userId}) AND "userShows".type = 'rec'
+    WHERE "userShows"."userId" IN (SELECT "followed" FROM "Follow" WHERE "follower" = ${userId}) AND "userShows".type = 'rec' AND "userShows"."showId" NOT IN (SELECT "userShows"."showId" from "userShows" WHERE "userShows".type = 'seen' AND "userShows"."userId" = ${userId})
     ORDER BY "userShows"."updatedAt" DESC`
 
     const config = {
