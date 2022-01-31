@@ -11,8 +11,7 @@ const db = require('../db/db')
 const pkg = require('../../package.json')
 const axios = require('axios')
 
-// Authorization middleware. When used, the Access Token must
-// exist and be verified against the Auth0 JSON Web Key Set.
+//authorization middleware
 const checkJwt = auth({
   audience: process.env.CLIENTID,
   issuerBaseURL: `https://dev--5p-bz53.us.auth0.com/`,
@@ -20,13 +19,44 @@ const checkJwt = auth({
 
 const jwtDecode = require('jwt-decode')
 module.exports = router
-// const ManagementClient = require('auth0').ManagementClient;
 
-// const auth0 = new ManagementClient({
-//   domain: 'dev--5p-bz53.us.auth0.com',
-//   clientId: process.env.CLIENTID,
-//   clientSecret: process.env.CLIENTSECRET,
-// });
+const ManagementClient = require('auth0').ManagementClient
+
+const getManagementClientToken = () => {
+  var options = {
+    method: 'POST',
+    url: 'https://dev--5p-bz53.us.auth0.com/oauth/token',
+    headers: { 'content-type': 'application/json' },
+    body: '{"client_id":"yYcgO6U6uQIYRJN7Fe5FnrrPTxzgf42c","client_secret":"XUatSdM_IFkUEW2IXTJlNXeBsL477Ba-aqn7Ro-4B-HnFkOHd15A0YaeJ425bBJj","audience":"https://dev--5p-bz53.us.auth0.com/api/v2/","grant_type":"client_credentials"}',
+  }
+
+  axios(options)
+    .then((response) => {
+      console.log(response.data)
+    })
+    .catch((error) => {
+      console.log('herror', error)
+    })
+}
+
+const getManagementClient = async () => {
+  try {
+    const auth0 = new ManagementClient({
+      domain: 'dev--5p-bz53.us.auth0.com',
+      clientId: process.env.MANAGEMENT_CLIENT_ID,
+      clientSecret: process.env.MANAGEMENT_CLIENT_SECRET,
+      scope: 'read:users update:users delete:users',
+      audience: 'https://dev--5p-bz53.us.auth0.com/api/v2/',
+      tokenProvider: {
+        enableCache: true,
+        cacheTTLInSeconds: 10,
+      },
+    })
+    return auth0
+  } catch (err) {
+    console.log(err)
+  }
+}
 
 const findUserFromToken = async (token) => {
   const users = await User.findOne({
@@ -485,12 +515,89 @@ router.get('/login', checkJwt, async (req, res, next) => {
     } else {
       const decoded = jwtDecode(req.headers.authorization)
       console.log('decoded is this now', decoded)
+      const username = decoded['https://mynamespace/username']
+        ? decoded['https://mynamespace/username']
+        : decoded.nickname
       user = await User.create({
         email: decoded.name,
-        username: decoded['https://mynamespace/username'],
+        username: username,
         auth0Id: decoded.sub,
       })
       res.send(user)
+    }
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.put('/changeUsername', checkJwt, async (req, res, next) => {
+  try {
+    const decoded = jwtDecode(req.headers.authorization)
+    const user = await findUserFromToken(decoded)
+    const userId = decoded.sub
+    let { newUsername } = req.body
+    const usernameExists = await User.findAll({
+      where: {
+        username: {
+          [Sequelize.Op.iLike]: newUsername,
+        },
+      },
+    })
+    if (usernameExists.length) {
+      res.send('duplicateUsername').status(400)
+    } else if (user && newUsername) {
+      // if the account is through social and not auth0, it doesn't have a username associated with it through them -- don't change anything on the auth0 side
+      if (userId[0] !== 'a') {
+        user.username = newUsername
+        await user.save()
+        res.send(user)
+      } else {
+        const management = await getManagementClient()
+        // const thisUser = await management.users.get({ id: userId })
+        management.updateUser(
+          { id: userId },
+          { username: newUsername },
+          async function (err) {
+            try {
+              if (err) {
+                next(err)
+              } else {
+                user.username = newUsername
+                await user.save()
+                res.send(user)
+              }
+            } catch (err) {
+              console.log('err', err)
+              next(err)
+            }
+          }
+        )
+      }
+    }
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.delete('/deleteAccount', checkJwt, async (req, res, next) => {
+  try {
+    const decoded = jwtDecode(req.headers.authorization)
+    const user = await findUserFromToken(decoded)
+    const userId = decoded.sub
+    console.log('userId', userId)
+    if (user) {
+      const management = await getManagementClient()
+      console.log(management, 'management')
+      const thisUser = await management.users.get({ id: userId })
+      console.log('user', thisUser)
+      await management.deleteUser({ id: userId }, async function (err) {
+        if (err) {
+          console.log('auth0 was unable to delete this user')
+          next(err)
+        }
+        await user.destroy()
+        res.send(user)
+      })
     }
   } catch (err) {
     next(err)
