@@ -31,12 +31,8 @@ const getManagementClientToken = () => {
   }
 
   axios(options)
-    .then((response) => {
-      console.log(response.data)
-    })
-    .catch((error) => {
-      console.log('herror', error)
-    })
+    .then((response) => {})
+    .catch((error) => {})
 }
 
 const getManagementClient = async () => {
@@ -109,7 +105,6 @@ router.post('/addTags', checkJwt, async (req, res, next) => {
       let user = await findUserFromToken(decoded)
       if (user) {
         if (user.username === 'ndmetrick') {
-          console.log('reqbody', req.body)
           const { tag } = req.body
           await Tag.create(tag)
           res.sendStatus(200)
@@ -422,12 +417,10 @@ router.put('/getMatchingRecs', async (req, res, next) => {
         { replacements: { tagIds } },
         endQuery
       )
-      console.log('what does this do', recs[0])
     } else {
       sqlQuery += `ORDER BY "userShows"."updatedAt" DESC`
       recs = await sequelize.query(sqlQuery)
       console.log('query', sqlQuery)
-      console.log('what does this do', recs[0])
     }
 
     if (recs) {
@@ -472,7 +465,7 @@ router.put('/getMatchingRecs', async (req, res, next) => {
             }
           }
         }
-        console.log('recs and watch providers', filteredRecs, newWatchProviders)
+
         const recsAndWatchProviders = { recs: filteredRecs, newWatchProviders }
         res.send(recsAndWatchProviders)
       } else {
@@ -587,9 +580,9 @@ router.delete('/deleteAccount', checkJwt, async (req, res, next) => {
     console.log('userId', userId)
     if (user) {
       const management = await getManagementClient()
-      console.log(management, 'management')
+
       const thisUser = await management.users.get({ id: userId })
-      console.log('user', thisUser)
+
       await management.deleteUser({ id: userId }, async function (err) {
         if (err) {
           console.log('auth0 was unable to delete this user')
@@ -797,7 +790,7 @@ router.get('/recs', checkJwt, async (req, res, next) => {
     )
 
     const recs = await sequelize.query(sqlQuery)
-    console.log('this is what recs look like', recs[0])
+
     if (recs) {
       res.send(recs[0])
     }
@@ -876,7 +869,6 @@ router.put('/addShow/:type', checkJwt, async (req, res, next) => {
     })
     userShow.type = type
     userShow.save()
-    console.log('userShow', userShow)
 
     res.send(userShow)
   } catch (err) {
@@ -908,7 +900,11 @@ router.get('/getUserTags/:uid', async (req, res, next) => {
 
 router.get('/getAllTags', async (req, res, next) => {
   try {
-    const tags = await Tag.findAll()
+    let tags = await Tag.findAll()
+    tags.sort(function (a, b) {
+      return a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })
+    })
+    console.log('TAGS', tags)
     res.send(tags)
   } catch (err) {
     next(err)
@@ -925,7 +921,6 @@ router.put('/changeUserTags', checkJwt, async (req, res, next) => {
     }
     const { userTagIds, description } = req.body
     await user.setTags(userTagIds)
-    console.log('this is description', description)
     user.description = description
     user.save()
     const tags = await user.getTags()
@@ -1040,7 +1035,7 @@ router.put('/switchShow', checkJwt, async (req, res, next) => {
     //      },
     //    ],
     //  });
-    console.log('i got here, reqbody', req.body.newType)
+
     const oldType = userShow.type
     userShow.type = req.body.newType
     userShow.save()
