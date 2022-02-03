@@ -5,7 +5,9 @@ const seed = require('../seed.js')
 
 const init = async () => {
   try {
+    console.log('i got this far 1')
     if (process.env.SEED === 'true') {
+      console.log('I GOT INTO THIS ONE SEED')
       await seed()
     } else {
       await db.sync()
