@@ -20,11 +20,4 @@ const db = new Sequelize(
   config
 )
 
-try {
-  console.log('I GOT HERE TO THIS')
-  await sequelize.authenticate()
-  console.log('Connection has been established successfully.')
-} catch (error) {
-  console.error('Unable to connect to the database:', error)
-}
 module.exports = db
