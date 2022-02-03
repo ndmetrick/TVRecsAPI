@@ -104,10 +104,14 @@ router.post('/addTags', checkJwt, async (req, res, next) => {
       const decoded = jwtDecode(req.headers.authorization)
       let user = await findUserFromToken(decoded)
       if (user) {
+        console.log
         if (user.username === 'ndmetrick') {
           const { tag } = req.body
           await Tag.create(tag)
           res.sendStatus(200)
+        } else {
+          console.log('You are not allowed to add tags')
+          res.sendStatus(401)
         }
       }
     }
@@ -425,6 +429,7 @@ router.put('/getMatchingRecs', async (req, res, next) => {
 
     if (recs) {
       if (filters['chooseStreamers']) {
+        // if (user.country !== 'US') {
         const { streamers, watchProviders } = filters['chooseStreamers']
 
         const filteredRecs = []
@@ -436,7 +441,7 @@ router.put('/getMatchingRecs', async (req, res, next) => {
           if (
             watchProviders[rec.imdbId] &&
             (new Date() - watchProviders[rec.imdbId].date) /
-              (1000 * 60 * 60 * 24) <
+              (2000 * 60 * 60 * 24) <
               7
           ) {
             const streamOptions = watchProviders[rec.imdbId].streaming.options
@@ -466,11 +471,71 @@ router.put('/getMatchingRecs', async (req, res, next) => {
           }
         }
 
-        const recsAndWatchProviders = { recs: filteredRecs, newWatchProviders }
+        const recsAndWatchProviders = {
+          recs: filteredRecs,
+          newWatchProviders,
+        }
         res.send(recsAndWatchProviders)
-      } else {
-        res.send(recs[0])
       }
+      //   } else {
+      //     const { streamers, watchProviders } = filters['chooseStreamers']
+
+      //     const filteredRecs = []
+
+      //     for (let i = 0; i < recs[0].length; i++) {
+      //       let rec = recs[0][i]
+
+      //       if (
+      //         rec.streaming &&
+      //         (new Date() - rec.updatedAt) / (2000 * 60 * 60 * 24) < 7
+      //       ) {
+      //         const streamOptions = rec.streaming.split(', ')
+      //         if (streamers.find((streamer) => streamOptions[streamer.name]))
+      //           filteredRecs.push(rec)
+      //       } else if (
+      //         watchProviders[rec.imdbId] &&
+      //         (new Date() - watchProviders[rec.imdbId].date) /
+      //           (2000 * 60 * 60 * 24) <
+      //           7
+      //       ) {
+      //         const streamOptions = watchProviders[rec.imdbId].streaming.options
+      //         if (streamers.find((streamer) => streamOptions[streamer.name]))
+      //           filteredRecs.push(rec)
+      //       } else {
+      //         const APIString = `https://api.themoviedb.org/3/tv/${rec.imdbId}?api_key=${process.env.TMDB}&append_to_response=watch/providers`
+      //         const showInfo = await axios.get(APIString)
+      //         if (showInfo) {
+      //           const providersInfo =
+      //             showInfo.data['watch/providers'].results['US']
+      //           const streaming = getStreaming(providersInfo)
+      //           const purchase = getPurchase(providersInfo)
+      //           const show = await Show.findByPk(rec.showId)
+      //           show.streaming = streaming.string
+      //           show.purchase = purchase
+      //           const overview = showInfo.data.overview
+      //           const info = {
+      //             overview: overview,
+      //             streaming: streaming,
+      //             purchase: purchase,
+      //             date: new Date(),
+      //           }
+      //           newWatchProviders[rec.imdbId] = info
+      //           await show.save()
+      //           const streamOptions = streaming.options
+      //           if (streamers.find((streamer) => streamOptions[streamer.name]))
+      //             filteredRecs.push(rec)
+      //         }
+      //       }
+      //     }
+      //   }
+      //   const recsAndWatchProviders = {
+      //     recs: filteredRecs,
+      //     newWatchProviders,
+      //   }
+      //   res.send(recsAndWatchProviders)
+      // }
+    } else {
+      res.send(recs[0])
     }
   } catch (err) {
     next(err)
