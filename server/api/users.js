@@ -211,6 +211,7 @@ router.put('/getMatchingUsers', async (req, res, next) => {
     if (process.env.DATABASE_URL) {
       config.dialectOptions = {
         ssl: {
+          require: true,
           rejectUnauthorized: false,
         },
       }
